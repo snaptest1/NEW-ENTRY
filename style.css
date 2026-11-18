@@ -469,3 +469,20 @@ table.pv td .pv-img{max-width:100%}
 .sk-areachk{display:flex;flex-wrap:wrap;gap:6px}
 .sk-areachk span{font-size:12.5px;border-radius:999px;padding:4px 11px;border:1px solid #d6dcf5;background:#eef2ff;color:var(--navy)}
 .sk-areachk span.bad{background:#fff4e5;border-color:#f3c98b;color:#8a4b00}
+
+/* रैयत / केवालेदार tick + badge */
+.kd-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.kd{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#475569}
+.kd.on.is_rai{background:#dbeafe;border-color:#2563eb;color:#1e40af}
+.kd.on.is_kew{background:#ffedd5;border-color:#ea580c;color:#9a3412}
+.kind-badge{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:6px;font-size:11.5px;font-weight:700;vertical-align:middle}
+.kind-badge.rai{background:#dbeafe;color:#1e40af}
+.kind-badge.kew{background:#ffedd5;color:#9a3412}
+.kind-badge.both{background:#ede9fe;color:#5b21b6}
+.row-sum b{display:inline-block;max-width:70%;vertical-align:middle}
+.row-sum small{display:block}
+
+.kd-btn{padding:7px 14px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;color:#475569;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.kd-btn.on.rai{background:#2563eb;border-color:#2563eb;color:#fff}
+.kd-btn.on.kew{background:#ea580c;border-color:#ea580c;color:#fff}
+.kd-btn.on.both{background:#7c3aed;border-color:#7c3aed;color:#fff}

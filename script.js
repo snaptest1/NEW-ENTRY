@@ -32,7 +32,7 @@
     abhi_img: null, sch: Array.from({ length: n }, blankSch)
   });
   // एक रैयत (नाम/पिता/पता एक ही बार) + उसकी कई खेसरा-पंक्तियाँ (plots)
-  const blankGroup = (n) => ({ name: "", rel_type: "पिता", rel_naam: "", addr: "", plots: [blankPlot(n)] });
+  const blankGroup = (n) => ({ is_rai: true, is_kew: false, name: "", rel_type: "पिता", rel_naam: "", addr: "", plots: [blankPlot(n)] });
   const blankSched = () => ({ name: "", rel_type: "पिता", rel_naam: "", jati: "", nivasi: "निज ग्राम" });
   const freshState = () => ({ header: {}, schedules: [blankSched()], groups: [blankGroup(1)] });
 
@@ -42,14 +42,17 @@
   const SIGN_DROP = /राजस्व\s*(कर्मचारी|अधिकारी)|अंचल\s*अधिकारी|^पक्षकार\s*के\s*हस्ताक्षर/;
   function normalize(st) {
     st.header = st.header || {};
-    st.opts = Object.assign({ pageNo: true, border: true, partySign: true, sign: false, totalRow: false, paper: "auto", signLabels: DEFAULT_SIGN, decl: true, declText: DEFAULT_DECL, declFoot: "गवाह का हस्त०", partyWord: "auto", rowsPerPage: 12, design: "colorful" }, st.opts || {});
+    st.opts = Object.assign({ pageNo: true, border: true, partySign: true, sign: false, totalRow: false, paper: "auto", signLabels: DEFAULT_SIGN, decl: true, declText: DEFAULT_DECL, declFoot: "गवाह का हस्त०", partyWord: "auto", nameHead: "auto", rowsPerPage: 12, design: "colorful" }, st.opts || {});
     if (st.opts.declText === OLD_DECL) st.opts.declText = DEFAULT_DECL;   // पुराना डिफ़ॉल्ट पाठ → नया (जिसमें संख्या बदली जा सकती है)
     st.opts.signLabels = String(st.opts.signLabels == null ? DEFAULT_SIGN : st.opts.signLabels).split(/\r?\n/).map((x) => x.trim()).filter((x) => x && !SIGN_DROP.test(x)).join("\n");
+    if (st.opts.nameHead == null || String(st.opts.nameHead).trim() === "") st.opts.nameHead = "auto";
     if (st.opts.partyWord == null || String(st.opts.partyWord).trim() === "") st.opts.partyWord = "auto";
     if (!Array.isArray(st.schedules) || !st.schedules.length) st.schedules = [blankSched()];
     st.schedules.forEach((x) => { if (x.rel_type == null) x.rel_type = "पिता"; ["rel_naam", "jati", "nivasi"].forEach((k) => { if (x[k] == null) x[k] = ""; }); });
     if (!Array.isArray(st.groups) || !st.groups.length) st.groups = [blankGroup(st.schedules.length)];
     st.groups.forEach((g) => {
+      if (g.is_rai == null) g.is_rai = true; if (g.is_kew == null) g.is_kew = false;
+      if (!g.is_rai && !g.is_kew) g.is_rai = true;
       if (!Array.isArray(g.plots) || !g.plots.length) g.plots = [blankPlot(st.schedules.length)];
       g.plots.forEach((r) => {
         r.sch = Array.isArray(r.sch) ? r.sch : [];
@@ -208,13 +211,15 @@
 
   /* ---------- Step 3 : रैयत (एक बार) + खेसरा पंक्तियाँ ---------- */
   const gName = (g) => (g.name || "").trim() || "नया रैयत";
+  const kindLabel = (g) => (g.is_kew && g.is_rai !== false ? "रैयत व केवालेदार" : g.is_kew ? "केवालेदार" : "खतियानी रैयत");
+  const kindBadge = (g) => '<span class="kind-badge ' + (g.is_kew && g.is_rai !== false ? "both" : g.is_kew ? "kew" : "rai") + '">' + (g.is_kew && g.is_rai !== false ? "रैयत व केवालेदार" : g.is_kew ? "केवालेदार" : "रैयत") + "</span>";
   function plotSummary(r) {
     const meta = [r.khata && "खाता " + r.khata, r.khesra && "खेसरा " + r.khesra].filter(Boolean).join(" · ");
     return "<b>" + (h(meta) || "खेसरा विवरण भरें") + "</b>";
   }
   function groupSummary(g) {
     const n = g.plots.filter(plotHasData).length;
-    return "<b>" + h(gName(g)) + "</b><small>" + (n ? n + " खेसरा पंक्ति" : "पंक्ति भरी नहीं") + "</small>";
+    return "<b>" + h(gName(g)) + "</b>" + kindBadge(g) + "<small>" + (n ? n + " खेसरा पंक्ति" : "पंक्ति भरी नहीं") + "</small>";
   }
   function pickOf(gi, pi) {
     const key = gi + "-" + pi, n = state.schedules.length;
@@ -298,7 +303,13 @@
       let body = "";
       if (open) {
         body = '<div class="row-body"><div class="sec"><div class="sec-t">रैयत की जानकारी <small>सिर्फ़ एक बार भरें — सारी खेसरा पंक्तियों में अपने-आप जुड़ेगी</small></div><div class="grid g4">' +
-          fld(G + "name", "खतियानी रैयत का नाम", { cls: "span2", ph: "नाम" }) +
+          (function () {
+            const cur = g.is_kew && g.is_rai !== false ? "both" : g.is_kew ? "kew" : "rai";
+            const bx = (v, t) => '<button type="button" class="kd-btn ' + v + (cur === v ? " on" : "") + '" data-act="kind" data-g="' + gi + '" data-v="' + v + '">' + (cur === v ? "✓ " : "") + t + "</button>";
+            return '<div class="fld span2 kind-fld"><div class="kd-row">' + bx("rai", "खतियानी रैयत") + bx("kew", "केवालेदार") + bx("both", "दोनों") + "</div>" +
+              "<span>" + kindLabel(g) + " का नाम</span>" +
+              '<input type="text" data-p="' + G + 'name" value="' + h(g.name) + '" placeholder="नाम"></div>';
+          })() +
           '<div class="fld span2"><span>पिता / पति का नाम</span><div class="rel">' +
           '<select data-p="' + G + 'rel_type">' + ["पिता", "पति", "अभिभावक"].map((o) => "<option" + (g.rel_type === o ? " selected" : "") + ">" + o + "</option>").join("") + "</select>" +
           '<input type="text" data-p="' + G + 'rel_naam" value="' + h(g.rel_naam) + '"></div></div>' +
@@ -357,6 +368,15 @@
       '<div class="fld" style="margin-top:8px"><span>या अपना शब्द लिखें (जैसे: चारों, सभी पाँचों)</span><input type="text" data-p="opts.partyWord" value="' + (isPreset ? "" : h(cur)) + '" placeholder="अपना शब्द"></div>' +
       '<div class="hint">पाठ में <b>{संख्या}</b> की जगह यही शब्द छपता है। "अपने-आप" में अनुसूचि की गिनती (अभी ' + n + ') से तय होता है।</div></div>';
   }
+  function headBox(o) {
+    const cur = o.nameHead || "auto";
+    const chips = [["auto", "अपने-आप (" + BatwaraDocx.nameHeadFor({ nameHead: "auto" }, state.groups) + ")"], ["खतियानी रैयत", "खतियानी रैयत"], ["केवालेदार", "केवालेदार"], ["खतियानी रैयत / केवालेदार", "रैयत / केवालेदार"]];
+    const isPreset = chips.some((c) => c[0] === cur);
+    return '<div class="party-box"><div class="party-t">पहले कॉलम का शीर्षक: "<b>' + h(BatwaraDocx.nameHeadFor(o, state.groups)) + ' का नाम व पता</b>" — क्या लिखें?</div>' +
+      '<div class="chips">' + chips.map((c) => '<button type="button" class="chip' + (cur === c[0] ? " on" : "") + '" data-act="nameHead" data-v="' + h(c[0]) + '">' + h(c[1]) + "</button>").join("") + "</div>" +
+      '<div class="fld" style="margin-top:8px"><span>या अपना शब्द लिखें</span><input type="text" data-p="opts.nameHead" value="' + (isPreset ? "" : h(cur)) + '" placeholder="अपना शब्द"></div>' +
+      '<div class="hint">"अपने-आप" में ✓ के हिसाब से तय होता है: सिर्फ़ रैयत हों तो "खतियानी रैयत", सिर्फ़ केवालेदार हों तो "केवालेदार", दोनों तरह के हों तो दोनों।</div></div>';
+  }
   function optionsCard() {
     const o = state.opts;
     const fixed = { A4: 2, A3: 3, Legal: 2 }[o.paper];
@@ -373,7 +393,7 @@
       '<div class="fld"><span>एक पेज में लगभग कितनी खेसरा पंक्तियाँ</span><input type="number" min="3" max="60" data-p="opts.rowsPerPage" value="' + h(o.rowsPerPage) + '"' + (o.paper !== "auto" ? " disabled" : "") + '></div></div>' +
       (o.paper === "auto" ? '<div class="note ok">पेज की ऊँचाई-चौड़ाई <b>अपने-आप</b> इतनी बनती है कि लगभग <b>' + (o.rowsPerPage || 12) + '</b> पंक्तियाँ एक पेज में आएँ।</div>' : "") +
       (fixed ? '<div class="note">इस साइज़ पर एक पेज में अधिकतम <b>' + fixed + '</b> अनुसूचि आएँगी; ज़्यादा हों तो अगला पेज बनेगा।</div>' : "") +
-      (o.decl ? partyBox(o) : "") +
+      headBox(o) + (o.decl ? partyBox(o) : "") +
       (o.decl ? '<div class="fld" style="margin-top:12px"><span>घोषणा पाठ — table के नीचे छपेगा (हर लाइन एक अनुच्छेद; चाहें तो बदल लें)</span><textarea data-p="opts.declText" rows="6">' + h(o.declText) + '</textarea></div><div class="fld" style="margin-top:10px"><span>पाठ के नीचे दाईं तरफ़ की लाइन (खाली छोड़ने पर नहीं छपेगी)</span><input type="text" data-p="opts.declFoot" value="' + h(o.declFoot) + '"></div>' : "") +
       (o.sign ? '<div class="fld" style="margin-top:12px"><span>गवाह आदि के खाने — हर लाइन में एक नाम (अधिकतम 6)</span><textarea data-p="opts.signLabels" rows="5">' + h(o.signLabels) + "</textarea></div>" : "") +
       "</div></div>";
@@ -724,6 +744,11 @@
     const tg = e.target;
     if (tg && tg.dataset && tg.dataset.abhi) { const [g, p] = tg.dataset.abhi.split("-").map(Number); const f = tg.files && tg.files[0]; const raw = tg.dataset.mode === "raw"; tg.value = ""; if (raw || !window.PlotSketch) loadAbhiImage(f, g, p); else loadSketchImage(f, g, p); return; }
     if (tg && tg.dataset && tg.dataset.pick) { const [g, p, k] = tg.dataset.pick.split("-").map(Number); pickOf(g, p)[k] = tg.checked; return; }
+    if (tg && tg.dataset && tg.dataset.kind) {
+      const [gi, f] = [Number(tg.dataset.kind.split("-")[0]), tg.dataset.kind.split("-")[1]], g = state.groups[gi]; if (!g) return;
+      g[f] = tg.checked; if (!g.is_rai && !g.is_kew) { g[f === "is_rai" ? "is_kew" : "is_rai"] = true; toast("कम से कम एक चुना रहेगा।"); }
+      save(); render(); return;
+    }
     if (tg && tg.dataset && tg.dataset.chk) { setP(tg.dataset.chk, tg.checked); save(); if (ui.step === 3) render(); return; }
     const p = e.target && e.target.dataset && e.target.dataset.p;
     if (p && /\./.test(p) && e.target.tagName === "SELECT") { setP(p, e.target.value); save(); if (ui.step === 3 && /^opts\./.test(p)) render(); }
@@ -766,6 +791,8 @@
     }
     else if (act === "pvToggle") { t.closest(".pv-page").classList.toggle("full"); fitPreview(); }
     else if (act === "design") { setP("opts.design", d.v); save(); render(); }
+    else if (act === "kind") { const g = state.groups[Number(d.g)]; if (g) { g.is_rai = d.v !== "kew"; g.is_kew = d.v !== "rai"; save(); render(); } }
+    else if (act === "nameHead") { setP("opts.nameHead", d.v); save(); render(); }
     else if (act === "partyWord") { setP("opts.partyWord", d.v); save(); render(); }
     else if (act === "pdf") printPdf();
     else if (act === "download") download();

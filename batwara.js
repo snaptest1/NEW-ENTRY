@@ -23,7 +23,16 @@
       decl: o.decl !== false, declText: o.declText != null ? String(o.declText) : DEFAULT_DECL, declFoot: o.declFoot != null ? String(o.declFoot) : "गवाह का हस्त०",
       rowsPerPage: Math.max(3, Math.min(60, parseInt(o.rowsPerPage, 10) || 12)),
       design: THEMES[o.design] ? o.design : "colorful",
+      nameHead: o.nameHead != null && String(o.nameHead).trim() !== "" ? String(o.nameHead).trim() : "auto",
       partyWord: o.partyWord != null && String(o.partyWord).trim() !== "" ? String(o.partyWord).trim() : "auto" };
+  }
+  // column के header में क्या लिखें: auto = ✓ के हिसाब से (सिर्फ़ रैयत / सिर्फ़ केवालेदार / दोनों तरह के हों तो दोनों)
+  function nameHeadFor(opts, groups) {
+    const w = String(opts.nameHead || "auto").trim() || "auto";
+    if (w !== "auto") return w;
+    const gs = (groups || []).filter((g) => t(g.name));
+    const hasK = gs.some((g) => g.is_kew), hasR = gs.some((g) => g.is_rai !== false);
+    return hasK && hasR ? "खतियानी रैयत / केवालेदार" : hasK ? "केवालेदार" : "खतियानी रैयत";
   }
   // "हम ___ फरीकैन" में क्या लिखें: auto = अनुसूचि की गिनती से; "-" = कुछ नहीं; वरना जो लिखा हो वही
   const PARTY_AUTO = { 1: "", 2: "दोनों", 3: "तीनों", 4: "चारों", 5: "पाँचों" };
@@ -67,7 +76,9 @@
     const rows = [];
     (st.groups || []).forEach((g, gi) => {
       const nameLines = [];
-      if (t(g.name)) nameLines.push(t(g.name));
+      const kew = g.is_kew, rai = g.is_rai !== false;
+      const kTag = kew ? (rai ? "रैयत व केवालेदार- " : "केवालेदार- ") : "खतियानी रैयत- ";
+      if (t(g.name)) nameLines.push(kTag + t(g.name));
       if (t(g.rel_naam)) nameLines.push((t(g.rel_type) || "पिता") + "- " + t(g.rel_naam));
       if (t(g.addr)) nameLines.push(t(g.addr));
       (g.plots || []).filter(plotHasData).forEach((p, pi) => {
@@ -157,7 +168,7 @@
     const chunks = parts.map((schedChunk) => {
       const isLast = schedChunk === parts[parts.length - 1];
       const cols = [];
-      cols.push({ id: "name", label: ["खतियानी रैयत का", "नाम व पता"], w: W.name });
+      cols.push({ id: "name", label: [nameHeadFor(opts, st.groups) + " का", "नाम व पता"], w: W.name });
       if (showLeft.jam) cols.push({ id: "jam", label: ["जमाबंदी", "सांख्या"], w: W.jam });
       if (showLeft.khata) cols.push({ id: "khata", label: ["खाता", "सांख्या"], w: W.khata });
       if (showLeft.khesra) cols.push({ id: "khesra", label: ["खेसरा", "सांख्या"], w: W.khesra });
@@ -573,7 +584,7 @@
     return { html: previewHtml(st, { print: true }), css };
   }
 
-  root.BatwaraDocx = { build, layout, previewHtml, printHtml, extractState, partyWordFor, fillParty, themes: THEMES };
+  root.BatwaraDocx = { build, layout, previewHtml, printHtml, extractState, partyWordFor, nameHeadFor, fillParty, themes: THEMES };
   if (typeof module !== "undefined" && module.exports) module.exports = root.BatwaraDocx;
 
 })(typeof window !== "undefined" ? window : globalThis);
